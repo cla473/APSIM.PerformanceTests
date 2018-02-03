@@ -1,5 +1,4 @@
 ﻿using APSIM.PerformanceTests.Models;
-using APSIM.Shared.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -9,9 +8,8 @@ using System.Net;
 using System.IO;
 using System.Web.Http;
 using System.Threading.Tasks;
-using System.Text;
 using System.Web.Http.Description;
-
+using Newtonsoft.Json;
 
 namespace APSIM.PerformanceTests.Service.Controllers
 {
@@ -144,31 +142,27 @@ namespace APSIM.PerformanceTests.Service.Controllers
                 {
                     commandER.CommandType = CommandType.Text;
                     commandER.Parameters.AddWithValue("@PullRequestId", pullRequestId);
-                    SqlDataReader reader = commandER.ExecuteReader();
-                    while (reader.Read())
+                    string response = Comms.SendQuery(commandER, "reader");
+                    DataTable dt = JsonConvert.DeserializeObject<DataTable>(response);
+                    foreach (DataRow row in dt.Rows)
                     {
                         ApsimFile apsim = new ApsimFile
                         {
-                            ID = reader.GetInt32(0),
-                            PullRequestId = reader.GetInt32(1),
-                            FileName = reader.GetString(2),
-                            FullFileName = reader.GetString(3),
-                            RunDate = reader.GetDateTime(4),
-                            StatsAccepted = reader.GetBoolean(5),
-                            IsMerged = reader.GetBoolean(6),
-                            SubmitDetails = reader.GetString(7)
+                            ID = (int)row[0],
+                            PullRequestId = (int)row[1],
+                            FileName = (string)row[2],
+                            FullFileName = (string)row[3],
+                            RunDate = (DateTime)row[4],
+                            StatsAccepted = (bool)row[5],
+                            IsMerged = (bool)row[6],
+                            SubmitDetails = (string)row[7]
                         };
-                        if (reader.IsDBNull(8))
-                        {
+                        if (row[8] == DBNull.Value)
                             apsim.AcceptedPullRequestId = 0;
-                        }
                         else
-                        {
-                            apsim.AcceptedPullRequestId = reader.GetInt32(8);
-                        }
+                            apsim.AcceptedPullRequestId = (int)row[8];
                         apsimFilesList.Add(apsim);
                     }
-                    reader.Close();
                 }
 
                 foreach (ApsimFile currentApsimFile in apsimFilesList)
@@ -180,33 +174,29 @@ namespace APSIM.PerformanceTests.Service.Controllers
                     {
                         commandER.CommandType = CommandType.Text;
                         commandER.Parameters.AddWithValue("@ApsimFilesId", currentApsimFile.ID);
-                        SqlDataReader reader = commandER.ExecuteReader();
-                        while (reader.Read())
+                        string response = Comms.SendQuery(commandER, "reader");
+                        DataTable dt = JsonConvert.DeserializeObject<DataTable>(response);
+                        foreach (DataRow row in dt.Rows)
                         {
                             PredictedObservedDetails predictedObserved = new PredictedObservedDetails
                             {
-                                ID = reader.GetInt32(0),
-                                ApsimID = reader.GetInt32(1),
-                                DatabaseTableName = reader.GetString(2),
-                                PredictedTableName = reader.GetString(3),
-                                ObservedTableName = reader.GetString(4),
-                                FieldNameUsedForMatch = reader.GetString(5),
-                                FieldName2UsedForMatch = reader.GetString(6),
-                                FieldName3UsedForMatch = reader.GetString(7),
-                                PassedTests = reader.GetDouble(8),
-                                HasTests = reader.GetInt32(9)
+                                ID = (int)row[0],
+                                ApsimID = (int)row[1],
+                                DatabaseTableName = (string)row[2],
+                                PredictedTableName = (string)row[3],
+                                ObservedTableName = (string)row[4],
+                                FieldNameUsedForMatch = (string)row[5],
+                                FieldName2UsedForMatch = (string)row[6],
+                                FieldName3UsedForMatch = (string)row[7],
+                                PassedTests = (double)row[8],
+                                HasTests = (int)row[9]
                             };
-                            if (reader.IsDBNull(10))
-                            {
+                            if (row[10] == DBNull.Value)
                                 predictedObserved.AcceptedPredictedObservedDetailsId = 0;
-                            }
                             else
-                            {
-                                predictedObserved.AcceptedPredictedObservedDetailsId = reader.GetInt32(10);
-                            }
+                                predictedObserved.AcceptedPredictedObservedDetailsId = (int)row[10];
                             currentPredictedObservedDetails.Add(predictedObserved);
                         }
-                        reader.Close();
                     }
                     currentApsimFile.PredictedObserved = currentPredictedObservedDetails;
                 }
@@ -235,9 +225,9 @@ namespace APSIM.PerformanceTests.Service.Controllers
                     commandER.CommandType = CommandType.Text;
                     commandER.Parameters.AddWithValue("@PredictedObservedDetailsId", predictedObservedId);
 
-                    SqlDataReader reader = commandER.ExecuteReader();
-                    dtResults.Load(reader);
-                    reader.Close();
+                    string response = Comms.SendQuery(commandER, "reader");
+
+                    dtResults = JsonConvert.DeserializeObject<DataTable>(response);
                 }
             }
             catch (Exception ex)
