@@ -12,6 +12,7 @@ using System.Web.Http;
 using System.Threading.Tasks;
 using System.Text;
 using System.Web.Http.Description;
+using Newtonsoft.Json;
 
 
 namespace APSIM.PerformanceTests.Service.Controllers
@@ -46,8 +47,9 @@ namespace APSIM.PerformanceTests.Service.Controllers
                     {
                         commandES.CommandType = CommandType.Text;
                         commandES.Parameters.AddWithValue("@PullRequestId", id);
-                        object obj = commandES.ExecuteScalar();
-                        PercentPassed = double.Parse(obj.ToString());
+                        // object obj = commandES.ExecuteScalar();
+                        string response = Comms.SendQuery(commandES, "scalar");
+                        PercentPassed = JsonConvert.DeserializeObject<double>(response);
                     }
                     if (PercentPassed == 100)
                     {

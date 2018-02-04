@@ -1,15 +1,8 @@
 ﻿using APSIM.PerformanceTests.Models;
-using Octokit;
 using System;
 using System.Data;
 using System.Data.SqlClient;
-using System.Net;
-using System.IO;
-using System.Web.Http;
-using System.Threading.Tasks;
-using System.Text;
-using System.Web.Http.Description;
-
+using Newtonsoft.Json;
 
 namespace APSIM.PerformanceTests.Service
 {
@@ -67,8 +60,8 @@ namespace APSIM.PerformanceTests.Service
                         commandES.Parameters.AddWithValue("@fieldName3UsedForMatch", currentPODetails.FieldName3UsedForMatch);
                     }
 
-                    object obj = commandES.ExecuteScalar();
-
+                    string response = Comms.SendQuery(commandES, "scalar");
+                    object obj = JsonConvert.DeserializeObject<DataTable>(response);
                     if (obj != null)
                     {
                         acceptedPredictedObservedDetailsID = int.Parse(obj.ToString());
@@ -105,9 +98,9 @@ namespace APSIM.PerformanceTests.Service
                         commandER.CommandType = CommandType.Text;
                         commandER.Parameters.AddWithValue("@PredictedObservedDetailsID", acceptedPredictedObservedDetailsID);
 
-                        SqlDataReader reader = commandER.ExecuteReader();
-                        acceptedStats.Load(reader);
-                        reader.Close();
+                        string response = Comms.SendQuery(commandER, "reader");
+
+                        acceptedStats = JsonConvert.DeserializeObject<DataTable>(response);
                     }
                 }
                 catch (Exception ex)
@@ -139,9 +132,9 @@ namespace APSIM.PerformanceTests.Service
                     commandER.CommandType = CommandType.Text;
                     commandER.Parameters.AddWithValue("@PredictedObservedDetailsID", predictedObservedID);
 
-                    SqlDataReader reader = commandER.ExecuteReader();
-                    resultDT.Load(reader);
-                    reader.Close();
+                    string response = Comms.SendQuery(commandER, "reader");
+
+                    resultDT = JsonConvert.DeserializeObject<DataTable>(response);
                 }
             }
             catch (Exception ex)
@@ -177,7 +170,7 @@ namespace APSIM.PerformanceTests.Service
                         tvpParam.SqlDbType = SqlDbType.Structured;
                         tvpParam.TypeName = "dbo.PredictedObservedTestsTableType";
 
-                        commandENQ.ExecuteNonQuery();
+                        Comms.SendQuery(commandENQ, "nonquery");
                     }
                     Utilities.WriteToLogFile(string.Format("    Tests Data for {0}.{1} import completed successfully!", currentApsimFileFileName, currentPODetailsDatabaseTableName));
                 }
@@ -211,7 +204,7 @@ namespace APSIM.PerformanceTests.Service
                         commandENQ.Parameters.AddWithValue("@AcceptedPredictedObservedDetailsID", acceptedPredictedObservedDetailsID);
                         commandENQ.Parameters.AddWithValue("@PredictedObservedDetailsID", currentPODetailsID);
 
-                        commandENQ.ExecuteNonQuery();
+                        Comms.SendQuery(commandENQ, "nonquery");
                     }
                     Utilities.WriteToLogFile("    Accepted PredictedObservedDetailsID added to PredictedObservedDetails.");
                 }
@@ -247,7 +240,7 @@ namespace APSIM.PerformanceTests.Service
                         commandENQ.Parameters.AddWithValue("@AcceptedRunDate", acceptedRunDate);
                         commandENQ.Parameters.AddWithValue("@PullRequestID", currentPullRequestID);
 
-                        commandENQ.ExecuteNonQuery();
+                        Comms.SendQuery(commandENQ, "nonquery");
                     }
                     //Utilities.WriteToLogFile("    Accepted ApsimFilesID added to ApsimFiles.");
                 }
@@ -299,7 +292,7 @@ namespace APSIM.PerformanceTests.Service
                         commandENQ.Parameters.AddWithValue("@LogAcceptDate", acceptLog.LogAcceptDate);
                         commandENQ.Parameters.AddWithValue("@StatsPullRequestId", acceptLog.StatsPullRequestId);
 
-                        commandENQ.ExecuteNonQuery();
+                        Comms.SendQuery(commandENQ, "nonquery");
                     }
 
                     if (StatsType == "Accept")
@@ -312,7 +305,7 @@ namespace APSIM.PerformanceTests.Service
                             commandENQ.Parameters.AddWithValue("@IsMerged", statsAccepted);        //do this the same to during changeover
                             commandENQ.Parameters.AddWithValue("@PullRequestId", acceptLog.PullRequestId);
 
-                            commandENQ.ExecuteNonQuery();
+                            Comms.SendQuery(commandENQ, "nonquery");
                         }
                     }
                     //Utilities.WriteToLogFile(string.Format("    Accept Stats Status updated to {0} by {1} on {2}. Reason: {3}", acceptLog.LogStatus, acceptLog.LogPerson, acceptLog.SubmitDate, acceptLog.LogReason));
@@ -334,7 +327,9 @@ namespace APSIM.PerformanceTests.Service
                 commandES.CommandType = CommandType.Text;
                 commandES.Parameters.AddWithValue("@PullRequestId", acceptedPullRequestID);
 
-                returnDate = (DateTime)commandES.ExecuteScalar();
+                string response = Comms.SendQuery(commandES, "scalar");
+
+                returnDate = JsonConvert.DeserializeObject<DateTime>(response);
             }
             return returnDate;
         }

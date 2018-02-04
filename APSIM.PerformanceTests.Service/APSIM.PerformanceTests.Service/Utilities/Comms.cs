@@ -46,6 +46,7 @@ namespace APSIM.PerformanceTests.Service
                 streamWriter.Close();
             }
 
+            //get the response
             HttpWebResponse httpResponse = (HttpWebResponse)request.GetResponse();
             string response = "";
             using (StreamReader streamReader = new StreamReader(httpResponse.GetResponseStream()))
