@@ -30,6 +30,8 @@ namespace APSIM.PerformanceTests.Service.Controllers
         {
             Utilities.WriteToLogFile("-----------------------------------");
             double PercentPassed = 0;
+            double acceptedFileCount = 0;
+            double currentFileCount = 0;
             bool passed = false;
 
             string connectStr = Utilities.GetConnectionString();
@@ -38,10 +40,10 @@ namespace APSIM.PerformanceTests.Service.Controllers
                 sqlCon.Open();
                 try
                 {
-                    string strSQL = "SELECT  100 * COUNT(CASE WHEN [PassedTests] = 100 THEN 1 ELSE NULL END) / COUNT(CASE WHEN [PassedTests] IS NOT NULL  THEN 1 ELSE 0 END) as PercentPassed "
+                    string strSQL = "SELECT 100 * COUNT(CASE WHEN [PassedTests] = 100 THEN 1 ELSE NULL END) / COUNT(CASE WHEN [PassedTests] IS NOT NULL  THEN 1 ELSE 0 END) as PercentPassed "
                                   + " FROM  [dbo].[ApsimFiles] AS a "
                                   + "    INNER JOIN[dbo].[PredictedObservedDetails] AS p ON a.ID = p.ApsimFilesID "
-                                  + "  WHERE a.[PullRequestId] = @PullRequestId ";
+                                  + " WHERE a.[PullRequestId] = @PullRequestId ";
                     using (SqlCommand commandES = new SqlCommand(strSQL, sqlCon))
                     {
                         commandES.CommandType = CommandType.Text;
@@ -53,7 +55,41 @@ namespace APSIM.PerformanceTests.Service.Controllers
                     {
                         passed = true;
                     }
+
+                    //Need to add additional validation .... need to check that the number of files processed matches the number of files in the accepted set
+                    if (passed == true)
+                    {
+                        strSQL = "SELECT [FileCount] "
+                               + " FROM  [dbo].[AcceptStatsLogs] "
+                               + " WHERE [LogStatus] = 1 "
+                               + "   AND [StatsPullRequestId] = 0 "
+                               + " ORDER BY [LogAcceptDate], [PullRequestId] ";
+                        using (SqlCommand commandES = new SqlCommand(strSQL, sqlCon))
+                        {
+                            commandES.CommandType = CommandType.Text;
+                            object obj = commandES.ExecuteScalar();
+                            acceptedFileCount = int.Parse(obj.ToString());
+                        }
+                        strSQL = "SELECT COUNT(pod.[TableName]) "
+                               + " FROM [dbo].[ApsimFiles] af "
+                               + "    INNER JOIN [dbo].[PredictedObservedDetails] pod on af.[ID] = pod.[ApsimFilesID] "
+                               + " WHERE af.[PullRequestId] = @PullRequestId ";
+                        using (SqlCommand commandES = new SqlCommand(strSQL, sqlCon))
+                        {
+                            commandES.CommandType = CommandType.Text;
+                            commandES.Parameters.AddWithValue("@PullRequestId", id);
+                            object obj = commandES.ExecuteScalar();
+                            currentFileCount = int.Parse(obj.ToString());
+                        }
+
+                        if (acceptedFileCount != currentFileCount)
+                        {
+                            passed = false;
+                        }
+                    }
                 }
+        
+        
                 catch (Exception ex)
                 {
                     Utilities.WriteToLogFile(string.Format("ERROR:  Pull Request Id {0}, Unable to determine Passed/Failed status: {1}", id.ToString(), ex.Message.ToString())); ;
